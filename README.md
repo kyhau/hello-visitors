@@ -1,4 +1,4 @@
-# hello-visitor
+# hello-visitors
 
 This is a prototype implementing a digital visitor book for the visitor to sign in and sign out.
 

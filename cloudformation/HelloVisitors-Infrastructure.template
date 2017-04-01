@@ -4,6 +4,12 @@
   "Description": "Create infrastructure for Hello-Visitors.",
 
   "Parameters": {
+
+    "LambdaDynamoDBExecutionRoleName": {
+      "Type": "String",
+      "Description": "The name of the lambda-dynamodb execution role. If you don't specify a name, AWS CloudFormation generates a unique physical ID.",
+      "Default": "HelloVisitors-lambda-dynamodb-execute-role"
+    },
     "ProvisionedThroughputReadCapacity": {
       "Type": "Number",
       "Description": "Sets the desired minimum number of consistent reads of items (up to 1KB in size) per second for the specified table before Amazon DynamoDB balances the load.",
@@ -13,11 +19,6 @@
       "Type": "Number",
       "Description": "Sets the desired minimum number of consistent writes of items (up to 1KB in size) per second for the specified table before Amazon DynamoDB balances the load.",
       "Default": "5"
-    },
-    "LambdaDynamoDBExecutionRoleName": {
-      "Type": "String",
-      "Description": "The name of the lambda-dynamodb execution role. If you don't specify a name, AWS CloudFormation generates a unique physical ID.",
-      "Default": "HelloVisitors-lambda-dynamodb-execute-role"
     },
     "TableName": {
       "Type": "String",
