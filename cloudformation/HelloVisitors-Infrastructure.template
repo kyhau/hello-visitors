@@ -5,6 +5,11 @@
 
   "Parameters": {
 
+    "LambdaDynamoDBFunctionName": {
+      "Type": "String",
+      "Description": "The name of the lambda function interacting with dynamodb.",
+      "Default": "VisitorsDynamoDBClient"
+    },
     "LambdaDynamoDBExecutionRoleName": {
       "Type": "String",
       "Description": "The name of the lambda-dynamodb execution role. If you don't specify a name, AWS CloudFormation generates a unique physical ID.",
@@ -107,6 +112,36 @@
                 "dynamodb:UntagResource"
               ],
               "Resource": {"Fn::Join": ["", ["arn:aws:dynamodb:::", {"Ref": "TableName"}]]}
+            }
+          ]
+        }
+      }
+    },
+
+    "ManagedPolicyLambdaDeploy": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Properties": {
+        "Description": "Managed Policy for deploying Lambda Function (read/write/delete)",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "lambda:CreateFunction"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "lambda:CreateAlias",
+                "lambda:DeleteFunction",
+                "lambda:InvokeFunction",
+                "lambda:PublishVersion",
+                "lambda:Update"
+              ],
+              "Resource": {"Fn::Join": ["", ["arn:aws:lambda:::", {"Ref": "LambdaDynamoDBFunctionName"}]]}
             }
           ]
         }
