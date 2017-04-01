@@ -1,0 +1,117 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+
+  "Description": "Create infrastructure for Hello-Visitors.",
+
+  "Parameters": {
+    "ProvisionedThroughputReadCapacity": {
+      "Type": "Number",
+      "Description": "Sets the desired minimum number of consistent reads of items (up to 1KB in size) per second for the specified table before Amazon DynamoDB balances the load.",
+      "Default": "5"
+    },
+    "ProvisionedThroughputWriteCapacity": {
+      "Type": "Number",
+      "Description": "Sets the desired minimum number of consistent writes of items (up to 1KB in size) per second for the specified table before Amazon DynamoDB balances the load.",
+      "Default": "5"
+    },
+    "LambdaDynamoDBExecutionRoleName": {
+      "Type": "String",
+      "Description": "The name of the lambda-dynamodb execution role. If you don't specify a name, AWS CloudFormation generates a unique physical ID.",
+      "Default": "HelloVisitors-lambda-dynamodb-execute-role"
+    },
+    "TableName": {
+      "Type": "String",
+      "Description": "A name for the DynamoDB Table. If you don't specify a name, AWS CloudFormation generates a unique physical ID and uses that ID for the table name.",
+      "Default": "Visitors"
+    }
+  },
+
+  "Resources": {
+
+    "IamRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": { "Ref": "LambdaDynamoDBExecutionRoleName"},
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+             {
+               "Effect": "Allow",
+               "Principal": {
+                 "Service": [ "lambda.amazonaws.com" ]
+               },
+               "Action": "sts:AssumeRole"
+             }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaDynamoDBExecutionRole"
+        ],
+        "Path": "/"
+      }
+    },
+
+    "DynamoDBTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": { "Ref": "TableName" },
+        "AttributeDefinitions": [
+          {"AttributeName": "CompanyName", "AttributeType": "N"},
+          {"AttributeName": "FullName", "AttributeType": "N"}
+        ],
+        "KeySchema": [
+          {"AttributeName": "CompanyName", "KeyType": "HASH"},
+          {"AttributeName": "FullName", "KeyType": "RANGE"}
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": { "Ref": "ProvisionedThroughputReadCapacity" },
+          "WriteCapacityUnits": { "Ref": "ProvisionedThroughputWriteCapacity" }
+        }
+      }
+    },
+
+    "ManagedPolicyDynamoDB": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Properties": {
+        "Description": "Managed Policy for accessing DynamoDB (read/write/delete)",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:ListTables",
+                "dynamodb:ListStreams"
+              ],
+              "Resource": "arn:aws:dynamodb:::*"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:CreateTable",
+                "dynamodb:DeleteItem",
+                "dynamodb:DeleteTable",
+                "dynamodb:DescribeLimits",
+                "dynamodb:DescribeTable",
+                "dynamodb:GetItem",
+                "dynamodb:GetRecords",
+                "dynamodb:ListTagsOfResource",
+                "dynamodb:PutItem",
+                "dynamodb:Query",
+                "dynamodb:TagResource",
+                "dynamodb:UpdateItem",
+                "dynamodb:UpdateTable",
+                "dynamodb:UntagResource"
+              ],
+              "Resource": {"Fn::Join": ["", ["arn:aws:dynamodb:::", {"Ref": "TableName"}]]}
+            }
+          ]
+        }
+      }
+    }
+
+  }
+
+}
