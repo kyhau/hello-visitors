@@ -42,15 +42,12 @@ signoutModelBtn.onclick = function(e) {
 
   apigClient.visitorsGet(params, body, additionalParams)
     .then(function(result){
-      console.log(JSON.stringify(result));
-
       for(i=0; i<result['data']['Count']; ++i) {
         items = result['data']['Items'];
         opt = new Option(items[i]['FullName'], items[i]['UUID']);
         selectOptions.appendChild(opt);
       }
     }).catch(function(result){
-      console.error(JSON.stringify(result));
       document.querySelector('.msg').innerHTML = "Failed to retrieve visitors. Please try again.";
     });
 }

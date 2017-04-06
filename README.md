@@ -2,7 +2,7 @@
 
 This is a prototype implementing a digital visitor book for the visitor to sign in and sign out.
 
-[Demo](http://k-hello-visitors.s3-website-ap-southeast-2.amazonaws.com/)
+[Demo](http://k-hello-visitors.s3-website-ap-southeast-2.amazonaws.com)
 
 ## Architecture
 
