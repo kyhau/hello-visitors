@@ -1,0 +1,302 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+
+  "Description": "Create API in API gateway that's backed by a Lambda function",
+
+  "Parameters": {
+    "ApiName": {
+      "Description": "Name of the API to create",
+      "Type": "String",
+      "Default": "HelloVisitors",
+      "AllowedPattern": "[A-Za-z0-9]*",
+      "MinLength": "4",
+      "MaxLength": "2048",
+      "ConstraintDescription": "must contain only alphanumeric characters (at least four)"
+    },
+    "ApiStageName": {
+      "Description": "Stage name to deploy the API to",
+      "Type": "String",
+      "Default": "stable",
+      "AllowedPattern": "[A-Za-z0-9]*",
+      "MinLength": "1",
+      "MaxLength": "64",
+      "ConstraintDescription": "must contain only alphanumeric characters (1-64 chars)"
+    },
+    "LambdaFunctionArn": {
+      "Description": "ARN of the Lambda function",
+      "Type": "String",
+      "Default": "arn:aws:lambda:ap-southeast-2:accountnumber:function:VisitorsDynamoDBClient"
+    },
+    "DynamoDbTableName": {
+      "Description": "Name of the DynamoDB managed by the Lambda function",
+      "Type": "String",
+      "Default": "Visitors"
+    }
+  },
+
+  "Resources": {
+
+    "RestApi": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "Properties": {
+        "Name": {"Ref": "ApiName"},
+        "Description": "Hello-Visitors API",
+        "FailOnWarnings": true
+      }
+    },
+
+    "LambdaPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:invokeFunction",
+        "FunctionName": {"Ref": "LambdaFunctionArn"},
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {"Fn::Join": ["", ["arn:aws:execute-api:", {"Ref": "AWS::Region"}, ":", {"Ref": "AWS::AccountId"}, ":", {"Ref": "RestApi"}, "/*"]]}
+      }
+    },
+
+    "ResourceVisitors": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {"Ref": "RestApi"},
+        "ParentId": {"Fn::GetAtt": ["RestApi", "RootResourceId"]},
+        "PathPart": "visitors"
+      }
+    },
+
+    "VisitorsOptionsMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {"Ref": "RestApi"},
+        "ResourceId": {"Ref": "ResourceVisitors"},
+        "HttpMethod": "OPTIONS",
+        "AuthorizationType": "NONE",
+        "MethodResponses": [{
+          "StatusCode": 200,
+          "ResponseParameters": {
+            "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+            "method.response.header.Access-Control-Allow-Methods": "'POST,OPTIONS,GET,PUT,DELETE'",
+            "method.response.header.Access-Control-Allow-Origin": "'*'"
+          }
+        }],
+        "Integration": {
+          "Type": "MOCK",
+          "IntegrationHttpMethod": "OPTIONS",
+          "Uri": {"Fn::Join" : ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, ":lambda:path/2015-03-31/functions/", {"Ref":"LambdaFunctionArn"}, "/invocations"]]},
+          "PassthroughBehavior": "WHEN_NO_TEMPLATES",
+          "RequestTemplates": {
+            "application/json": {"Fn::Join" : ["", [
+              "{\"statusCode\": 200}"
+            ]]}
+          },
+          "IntegrationResponses": [{
+            "StatusCode": 200,
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+              "method.response.header.Access-Control-Allow-Methods": "'POST,OPTIONS,GET,PUT,DELETE'",
+              "method.response.header.Access-Control-Allow-Origin": "'*'"
+            }
+          }]
+        }
+      }
+    },
+
+    "VisitorsGetMethod": {
+      "DependsOn": ["LambdaPermission"],
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {"Ref": "RestApi"},
+        "ResourceId": {"Ref": "ResourceVisitors"},
+        "HttpMethod": "GET",
+        "AuthorizationType": "NONE",
+        "RequestParameters": {
+          "method.request.header.X-Forwarded-For": "FALSE"
+        },
+        "MethodResponses": [{
+          "StatusCode": 200,
+          "ResponseParameters": {
+            "method.response.header.Access-Control-Allow-Origin": "'*'"
+          }
+        }],
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "GET",
+          "Uri": {"Fn::Join" : ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, ":lambda:path/2015-03-31/functions/", {"Ref":"LambdaFunctionArn"}, "/invocations"]]},
+          "PassthroughBehavior": "WHEN_NO_TEMPLATES",
+          "RequestTemplates": {
+            "application/json": {"Fn::Join" : ["", [
+              "{",
+                "\"operation\": \"list\",",
+                "\"tableName\": \"", {"Ref": "DynamoDbTableName"}, "\",",
+                "\"payload\": {",
+                  "\"FilterExpression\": \"attribute_not_exists(Signout)\"",
+                "}",
+              "}"
+            ]]}
+          },
+          "IntegrationResponses": [{
+            "StatusCode": 200,
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Origin": "'*'"
+            }
+          }]
+        }
+      }
+    },
+
+    "VisitorSigninModel": {
+      "Type": "AWS::ApiGateway::Model",
+      "Properties": {
+        "Description": "Schema for HelloVisitors",
+        "Name": "VisitorSigninModel",
+        "RestApiId": { "Ref": "RestApi" },
+        "ContentType": "application/json",
+        "Schema": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "title": "VisitorSigninModel",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fullname": { "type": "string" },
+              "companyname": { "type": "string" }
+            },
+            "required": [ "fullname", "companyname" ]
+          }
+        }
+      }
+    },
+    "VisitorsPostMethod": {
+      "DependsOn": ["LambdaPermission", "VisitorSigninModel"],
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {"Ref": "RestApi"},
+        "ResourceId": {"Ref": "ResourceVisitors"},
+        "HttpMethod": "POST",
+        "AuthorizationType": "NONE",
+        "MethodResponses": [{
+          "StatusCode": 200,
+          "ResponseParameters": {
+            "method.response.header.Access-Control-Allow-Origin": "'*'"
+          }
+        }],
+        "RequestParameters": {
+          "method.request.header.X-Forwarded-For": "FALSE"
+        },
+        "RequestModels": {
+          "application/json": { "Ref": "VisitorSigninModel" }
+        },
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {"Fn::Join" : ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, ":lambda:path/2015-03-31/functions/", {"Ref":"LambdaFunctionArn"}, "/invocations"]]},
+          "PassthroughBehavior": "WHEN_NO_TEMPLATES",
+          "RequestTemplates": {
+            "application/json": {"Fn::Join" : ["", [
+              "#set($inputRoot = $input.path('$'))",
+              "{",
+                "\"operation\": \"create\",",
+                "\"tableName\": \"", {"Ref": "DynamoDbTableName"}, "\",",
+                "\"timestampField\": \"Signin\",",
+                "\"payload\": {",
+                  "\"Item\": {",
+                    "\"CompanyName\" : \"$inputRoot.companyname\",",
+                    "\"FullName\" : \"$inputRoot.fullname\",",
+                    "\"Location\" : \"$input.params('X-Forwarded-For')\",",
+                    "\"UserAgent\" : \"$input.params('User-Agent')\"",
+                  "}",
+                "}",
+              "}"
+            ]]}
+          },
+          "IntegrationResponses": [{
+            "StatusCode": 200,
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Origin": "'*'"
+            }
+          }]
+        }
+      }
+    },
+
+    "VisitorSignoutModel": {
+      "Type": "AWS::ApiGateway::Model",
+      "Properties": {
+        "Description": "Schema for HelloVisitors",
+        "Name": "VisitorSignoutModel",
+        "RestApiId": { "Ref": "RestApi" },
+        "ContentType": "application/json",
+        "Schema": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "title": "VisitorSignoutModel",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "uuid": { "type": "string" }
+            },
+            "required": [ "uuid" ]
+          }
+        }
+      }
+    },
+    "VisitorsPutMethod": {
+      "DependsOn": ["LambdaPermission", "VisitorSignoutModel"],
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {"Ref": "RestApi"},
+        "ResourceId": {"Ref": "ResourceVisitors"},
+        "HttpMethod": "PUT",
+        "AuthorizationType": "NONE",
+        "MethodResponses": [
+        {
+          "StatusCode": 200,
+          "ResponseParameters": {
+            "method.response.header.Access-Control-Allow-Origin": "'*'"
+          }
+        },
+        {
+          "StatusCode": 500,
+          "ResponseParameters": {
+            "method.response.header.Access-Control-Allow-Origin": "'*'"
+          }
+        }
+        ],
+        "RequestParameters": {
+          "method.request.header.X-Forwarded-For": "FALSE"
+        },
+        "RequestModels": {
+          "application/json": { "Ref": "VisitorSignoutModel" }
+        },
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "PUT",
+          "Uri": {"Fn::Join" : ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, ":lambda:path/2015-03-31/functions/", {"Ref":"LambdaFunctionArn"}, "/invocations"]]},
+          "PassthroughBehavior": "WHEN_NO_TEMPLATES",
+          "RequestTemplates": {
+            "application/json": {"Fn::Join" : ["", [
+              "#set($inputRoot = $input.path('$'))",
+              "{",
+                "\"operation\": \"update\",",
+                "\"tableName\": \"", {"Ref": "DynamoDbTableName"}, "\",",
+                "\"timestampField\": \"Signout\",",
+                "\"payload\": {",
+                  "\"Key\": {",
+                    "\"UUID\" : \"$inputRoot.uuid\"",
+                  "}",
+                "}",
+              "}"
+            ]]}
+          },
+          "IntegrationResponses": [{
+            "StatusCode": 200,
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Origin": "'*'"
+            }
+          }]
+        }
+      }
+    }
+
+  }
+}
