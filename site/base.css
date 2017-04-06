@@ -1,5 +1,5 @@
 body {
-  background: black;
+  background: white;
   color: grey;
   font-family: 'Open Sans', Frutiger, Calibri, 'Myriad Pro', Myriad, sans-serif;
 }
@@ -15,9 +15,12 @@ div.content {
   right: 0;
   margin: 100px auto auto auto;
 }
+div.content > img {
+  width: 200px;
+}
 
 div.content > h1 {
-  color: lightgrey;
+  color: darkgrey;
   margin: 40px 0px 40px 0px;
 }
 
