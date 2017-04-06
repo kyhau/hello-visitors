@@ -1,7 +1,11 @@
+body {
+  background: black;
+  color: grey;
+  font-family: 'Open Sans', Frutiger, Calibri, 'Myriad Pro', Myriad, sans-serif;
+}
+
 div.content {
-  align: "center";
   text-align: center;
-  width: 350px;
   height: 150px;
   padding: 0 20px;
   position: absolute;
@@ -12,8 +16,13 @@ div.content {
   margin: 100px auto auto auto;
 }
 
+div.content > h1 {
+  color: lightgrey;
+  margin: 40px 0px 40px 0px;
+}
+
 /* Full-width input fields */
-input[type=text] {
+input[type=text], select {
   width: 100%;
   padding: 12px 20px;
   margin: 8px 0;
@@ -24,13 +33,35 @@ input[type=text] {
 
 /* Set a style for all buttons */
 button {
-  background-color: #4CAF50;
+  background-color: #a71d34; /*#4CAF50;*/ /* Green */
   color: white;
   padding: 14px 20px;
   margin: 8px 0;
   border: none;
+  border-radius: 5px 5px 5px 5px;
   cursor: pointer;
   width: 100%;
+  min-width: 200px;
+}
+
+button:hover {
+  opacity: 0.75;
+}
+
+button.left {
+  border-radius: 5px 0px 0px 5px;
+}
+
+button.right {
+  border-radius: 0px 5px 5px 0px;
+}
+
+div.content > button {
+  width: auto;
+}
+
+button.resetbtn {
+  min-width: 400px;
 }
 
 /* Extra styles for the cancel button */
@@ -51,7 +82,7 @@ button {
   background-color: #fefefe;
   margin: 5% auto 15% auto; /* 5% from the top, 15% from the bottom and centered */
   border: 1px solid #888;
-  width: 80%; /* Could be more or less, depending on screen size */
+  width: 600px; /* Could be more or less, depending on screen size */
 }
 
 /* The Modal (background) */
@@ -74,7 +105,7 @@ button {
   position: absolute;
   right: 35px;
   top: 15px;
-  color: #000;
+  color: grey;
   font-size: 40px;
   font-weight: bold;
 }
