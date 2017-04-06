@@ -5,6 +5,22 @@
 
   "Parameters": {
 
+    "BucketName": {
+      "Type": "String",
+      "Description": "The name of the S3 bucket for static website hosting.",
+      "Default": "hello-visitors"
+    },
+    "IndexDoc": {
+      "Type": "String",
+      "Description": "The file name of the index document.",
+      "Default": "index.html"
+    },
+    "ErrorDoc": {
+      "Type": "String",
+      "Description": "The file name of the error document.",
+      "Default": "index.html"
+    },
+
     "LambdaDynamoDBFunctionName": {
       "Type": "String",
       "Description": "The name of the lambda function interacting with dynamodb.",
@@ -15,6 +31,12 @@
       "Description": "The name of the lambda-dynamodb execution role. If you don't specify a name, AWS CloudFormation generates a unique physical ID.",
       "Default": "HelloVisitors-lambda-dynamodb-execute-role"
     },
+
+    "TableName": {
+      "Type": "String",
+      "Description": "A name for the DynamoDB Table. If you don't specify a name, AWS CloudFormation generates a unique physical ID and uses that ID for the table name.",
+      "Default": "Visitors"
+    },
     "ProvisionedThroughputReadCapacity": {
       "Type": "Number",
       "Description": "Sets the desired minimum number of consistent reads of items (up to 1KB in size) per second for the specified table before Amazon DynamoDB balances the load.",
@@ -24,15 +46,68 @@
       "Type": "Number",
       "Description": "Sets the desired minimum number of consistent writes of items (up to 1KB in size) per second for the specified table before Amazon DynamoDB balances the load.",
       "Default": "5"
-    },
-    "TableName": {
-      "Type": "String",
-      "Description": "A name for the DynamoDB Table. If you don't specify a name, AWS CloudFormation generates a unique physical ID and uses that ID for the table name.",
-      "Default": "Visitors"
     }
   },
 
   "Resources": {
+
+    "S3StaticWebsite": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName" : {"Ref":"BucketName"},
+        "AccessControl": "PublicRead",
+        "WebsiteConfiguration": {
+          "IndexDocument": {"Ref" : "IndexDoc"},
+          "ErrorDocument": {"Ref" : "ErrorDoc"}
+        },
+        "VersioningConfiguration": { "Status": "Suspended" }
+      },
+      "DeletionPolicy": "Delete"
+    },
+    "S3StaticWebsitePolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "DependsOn": ["S3StaticWebsite"],
+      "Properties": {
+        "Bucket": { "Ref": "BucketName" },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Sid": "PublicReadForGetBucketObjects",
+              "Action": ["s3:GetObject"],
+              "Effect": "Allow",
+              "Resource": { "Fn::Join": ["", ["arn:aws:s3:::", {"Ref": "BucketName"}, "/*"]] },
+              "Principal": "*"
+            }
+          ]
+        }
+      }
+    },
+    "ManagedPolicyS3": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "DependsOn": ["S3StaticWebsite"],
+      "Properties": {
+        "Description": "Managed Policy for accessing S3 bucket (read/write/delete)",
+        "PolicyDocument" : {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [ "s3:ListAllMyBuckets" ],
+              "Resource": "arn:aws:s3:::*" },
+            {
+              "Effect": "Allow",
+              "Action": [ "s3:ListBucket", "s3:GetBucketLocation" ],
+              "Resource": { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketName" } ] ] }
+            },
+            {
+              "Effect": "Allow",
+              "Action": [ "s3:PutObject", "s3:GetObject", "s3:DeleteObject" ],
+              "Resource": { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketName" }, "/*" ] ] }
+            }
+          ]
+        }
+      }
+    },
 
     "IamRole": {
       "Type": "AWS::IAM::Role",
@@ -62,12 +137,10 @@
       "Properties": {
         "TableName": { "Ref": "TableName" },
         "AttributeDefinitions": [
-          {"AttributeName": "CompanyName", "AttributeType": "N"},
-          {"AttributeName": "FullName", "AttributeType": "N"}
+          {"AttributeName": "UUID", "AttributeType": "S"}
         ],
         "KeySchema": [
-          {"AttributeName": "CompanyName", "KeyType": "HASH"},
-          {"AttributeName": "FullName", "KeyType": "RANGE"}
+          {"AttributeName": "UUID", "KeyType": "HASH"}
         ],
         "ProvisionedThroughput": {
           "ReadCapacityUnits": { "Ref": "ProvisionedThroughputReadCapacity" },
@@ -106,6 +179,7 @@
                 "dynamodb:ListTagsOfResource",
                 "dynamodb:PutItem",
                 "dynamodb:Query",
+                "dynamodb:Scan",
                 "dynamodb:TagResource",
                 "dynamodb:UpdateItem",
                 "dynamodb:UpdateTable",
