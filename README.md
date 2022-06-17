@@ -6,10 +6,11 @@ This is a prototype implementing a digital visitor book for the visitor to sign 
 
 ## Architecture
 
-```
- ___________________     _____________     _________________     __________    
-| S3 Static Website |-->| API Gateway |-->| Lambda Function |-->| DynamoDB |
-|___________________|   |_____________|   |_________________|   |__________|
+```mermaid
+  graph LR;
+      A[S3 Static Website]-->B[API Gateway];
+      B-->C[Lambda Function];
+      C-->D[DynamoDB];
 ```
 
 1. A DynamoDB Table for storing signin/signout records.
